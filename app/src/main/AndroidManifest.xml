@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"
-        package="by.jadjer.carlink">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="by.jadjer.carlink">
 
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
     <application
             android:name=".App"
@@ -18,6 +16,11 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.CarLinkDashboard">
 
+        <service
+                android:name=".service.CarlinkForegroundService"
+                android:exported="false"
+                android:foregroundServiceType="connectedDevice" />
+
         <activity
                 android:name=".ui.MainActivity"
                 android:exported="true"
@@ -28,17 +31,6 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
-
-        <service
-                android:name=".service.CarlinkForegroundService"
-                android:enabled="true"
-                android:exported="false"
-                android:foregroundServiceType="dataSync">
-
-        </service>
-
     </application>
-
 </manifest>

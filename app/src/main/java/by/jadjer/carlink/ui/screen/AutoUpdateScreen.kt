@@ -74,6 +74,6 @@ fun AutoUpdateScreen(viewModel: ServiceViewModel = viewModel()) {
 
 private fun startAndBindService(context: Context, connection: ServiceConnection) {
     val intent = Intent(context, CarlinkForegroundService::class.java)
-    context.startForegroundService(intent) // Запуск уведомления
-    context.bindService(intent, connection, Context.BIND_AUTO_CREATE) // Привязка для данных
+    context.startForegroundService(intent)
+    context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
 }
