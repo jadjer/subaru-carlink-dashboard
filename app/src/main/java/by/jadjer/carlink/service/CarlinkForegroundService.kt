@@ -1,28 +1,15 @@
 package by.jadjer.carlink.service
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
-import android.hardware.usb.UsbManager
 import android.os.Binder
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 class CarlinkForegroundService : Service() {
-    private val _binder = LocalBinder()
-    private val _counter = MutableStateFlow(0)
-    private var _job: Job? = null
-
     companion object {
         const val NOTIFICATION_ID = 101
         const val CHANNEL_ID = "CARLINK_SERVICE_CHANNEL"
@@ -31,53 +18,68 @@ class CarlinkForegroundService : Service() {
         const val PRODUCT_ID = "4001"
     }
 
-    val manager = getSystemService(Context.USB_SERVICE) as UsbManager
-    val deviceList = manager.deviceList
-
-//    val targetDevice = deviceList.values.find { it.vendorId == VENDOR_ID && it.productId == PRODUCT_ID }
-    val counterFlow: StateFlow<Int> = _counter.asStateFlow()
-
-    override fun onCreate() {
-        super.onCreate()
-
-        _job = CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-                delay(1000)
-                _counter.value += 1
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        _job?.cancel()
-
-        super.onDestroy()
-    }
+    private val _binder = LocalBinder()
 
     inner class LocalBinder : Binder() {
         fun getService(): CarlinkForegroundService = this@CarlinkForegroundService
     }
 
-    override fun onBind(intent: Intent): IBinder = _binder
+    override fun onCreate() {
+        super.onCreate()
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Сервис запущен")
-            .setContentText("Выполнение фоновых задач...")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+        startForeground(1, createNotification())
+    }
 
-        startForeground(NOTIFICATION_ID, notification)
+    override fun onBind(intent: Intent): IBinder {
+        return _binder
+    }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         return START_STICKY
     }
 
+    override fun onDestroy() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        super.onDestroy()
+    }
+
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
+        val descriptionText = "Отображает уровень громкости внешнего устройства"
+        val importance = NotificationManager.IMPORTANCE_HIGH
+        val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
+            description = descriptionText
+            setSound(null, null)
+            enableVibration(false)
+        }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Carlink Service")
+            .setContentText("Мониторинг громкости USB активен")
+            .setSmallIcon(android.R.drawable.ic_menu_compass)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun updateVolumeNotification(currentLevel: Int) {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_lock_silent_mode_off) // Ваша иконка
+            .setContentTitle("Громкость USB: $currentLevel%")
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // LOW, чтобы не всплывало на каждый %
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setOngoing(true) // Нельзя смахнуть
+            .setOnlyAlertOnce(false) // КРИТИЧНО: предотвращает звуки и вибрацию при обновлении
+            .setProgress(100, currentLevel, false) // 100 - макс, false - не бесконечный
+            .setSilent(false) // Полная тишина
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(NOTIFICATION_ID, notification)
     }
 }

@@ -1,9 +1,4 @@
-package by.jadjer.carlink.data
-
-enum class BroadcastType {
-    BROADCAST,
-    DEVICE,
-}
+package by.jadjer.carlink.domain.model
 
 data class IEBusMessage(
     val master: UInt,

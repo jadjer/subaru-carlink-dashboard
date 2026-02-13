@@ -1,91 +1,133 @@
 package by.jadjer.carlink.ui.component
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Dp
 
 @Composable
 fun MediaInfo(
-    volume: Int,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    source: String = "OFF",
+    volume: Int = 0,
+    visible: Boolean = true,
+    content: @Composable () -> Unit = {},
 ) {
     val containerHeight = 60.dp
-    val circleSize = 58.dp
+    val circleSize = 60.dp
     val containerBorderWidth = 2.dp
-    val circleRingWidth = 3.dp
-    val innerCircleBorderWidth = 2.dp
+    val circleRingWidth = 4.dp
+    val innerCircleBorderWidth = 3.dp
+    val outerCircleScale = 0.95f
     val innerCircleScale = 0.85f
+    val contentPaddingStart = 50.dp
     val contentPaddingEnd = 50.dp
-    val containerColor = Color.Black
-    val borderColor = Color.White
-    val accentColor = Color(0xFF007FFF)
-    val volumeTextColor = Color.White
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(containerHeight),
-        contentAlignment = Alignment.CenterEnd
+    // Material 3 цвета из текущей темы
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val outlineColor = MaterialTheme.colorScheme.outline
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    // Типографика M3
+    val sourceTextStyle = MaterialTheme.typography.bodyLarge
+    val volumeTextStyle = MaterialTheme.typography.headlineSmall
+
+    // Форма со стандартным скруглением medium (8.dp)
+    val containerShape = MaterialTheme.shapes.medium
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut()
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(end = circleSize / 2)
-                .border(
-                    width = containerBorderWidth,
-                    color = borderColor,
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .background(containerColor)
+            modifier = modifier
+                .fillMaxWidth()
+                .height(containerHeight),
+            contentAlignment = Alignment.CenterEnd
         ) {
-            Row(
+            // Основной контейнер – Surface
+            Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 10.dp, end = contentPaddingEnd),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(end = circleSize / 2),
+                shape = containerShape,
+                color = surfaceColor,          // фон внутри границ
+                border = BorderStroke(containerBorderWidth, outlineColor), // граница поверх
+                tonalElevation = 0.dp,         // убираем тень (по желанию)
+                shadowElevation = 0.dp
             ) {
-                content()
-            }
-        }
+                // Содержимое – автоматически обрезается по shape
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = source,
+                        modifier = Modifier.padding(5.dp),
+                        color = onSurfaceColor,
+                        style = sourceTextStyle
+                    )
 
-        Box(
-            modifier = Modifier
-                .size(circleSize)
-                .background(containerColor, CircleShape)
-                .drawBehind {
-                    drawCircle(
-                        color = accentColor,
-                        radius = size.minDimension / 2,
-                        style = Stroke(width = circleRingWidth.toPx())
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(start = contentPaddingStart, end = contentPaddingEnd),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        content()
+                    }
+                }
+            }
+
+            // Круг с громкостью (оставляем кастомную отрисовку, но цвета из темы)
+            Surface(
+                modifier = Modifier
+                    .size(circleSize)
+                    .drawBehind {
+                        // внешнее кольцо (primary)
+                        drawCircle(
+                            color = primaryColor,
+                            radius = size.minDimension / 2 * outerCircleScale,
+                            style = Stroke(width = circleRingWidth.toPx())
+                        )
+                        // внутреннее кольцо (outline)
+                        drawCircle(
+                            color = outlineColor,
+                            radius = size.minDimension / 2 * innerCircleScale,
+                            style = Stroke(width = innerCircleBorderWidth.toPx())
+                        )
+                    },
+                shape = CircleShape,
+                color = surfaceColor,          // фон круга
+                border = null,                // обводки нарисованы выше
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = volume.toString().padStart(2, '0'),
+                        color = onSurfaceColor,
+                        style = volumeTextStyle
                     )
-                    drawCircle(
-                        color = borderColor,
-                        radius = size.minDimension / 2 * innerCircleScale,
-                        style = Stroke(width = innerCircleBorderWidth.toPx())
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = volume.toString().padStart(2, '0'),
-                color = volumeTextColor,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
+                }
+            }
         }
     }
 }
@@ -93,8 +135,7 @@ fun MediaInfo(
 @Preview(showBackground = true)
 @Composable
 fun MediaInfoPreview() {
-    MediaInfo(5, content = {
+    MediaInfo(source = "CD", volume = 5, content = {
         Text("SVETLOE", color = Color.White, fontSize = 20.sp)
-        Text("90.40", color = Color.White, fontSize = 20.sp)
     })
 }
