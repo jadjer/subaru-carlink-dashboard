@@ -5,9 +5,18 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import by.jadjer.carlink.CarlinkApplication
+import by.jadjer.carlink.domain.repository.UsbRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class CarlinkForegroundService : Service() {
     companion object {
@@ -18,32 +27,46 @@ class CarlinkForegroundService : Service() {
         const val PRODUCT_ID = "4001"
     }
 
-    private val _binder = LocalBinder()
-
-    inner class LocalBinder : Binder() {
-        fun getService(): CarlinkForegroundService = this@CarlinkForegroundService
-    }
+    private val _serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private lateinit var _usbRepository: UsbRepository
 
     override fun onCreate() {
         super.onCreate()
 
+        _usbRepository = (application as CarlinkApplication).container.usbRepository
+
         createNotificationChannel()
 
-        startForeground(1, createNotification())
-    }
-
-    override fun onBind(intent: Intent): IBinder {
-        return _binder
+        _serviceScope.launch {
+            _usbRepository.selectedDevice.collect { device ->
+                if (device == null) {
+                    stopSelf()
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            createNotification(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+        )
+
         return START_STICKY
     }
 
+    override fun onBind(intent: Intent?): IBinder?  = null
+
     override fun onDestroy() {
-        stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
+
+        _serviceScope.cancel()
+
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun createNotificationChannel() {

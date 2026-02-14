@@ -14,6 +14,7 @@ class CarlinkApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
         container = AppContainerImpl(this)
     }
 }
